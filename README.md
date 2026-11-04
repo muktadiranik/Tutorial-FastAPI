@@ -24,15 +24,8 @@ Local `.env` files, database files, virtual environments, caches, and IDE files
 are excluded from Git. Database connection settings in the tutorial code are
 for local development; do not use them as production credentials.
 
-## Practice repository
+## Practice project
 
-`practice-1/` is a Git submodule referencing
-<https://github.com/muktadiranik/FastAPI-practice-1>. After cloning, initialize it
-from the repository root:
-
-```shell
-git submodule update --init --recursive
-```
-
-The parent repository records a submodule commit, not uncommitted changes inside
-that repository.
+`practice-project/` contains the store practice application, including category,
+product, cart, and order endpoints. Its source files are tracked directly in this
+repository; no submodule initialization is needed.
