@@ -10,5 +10,13 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 
+# Local databases and SQLite runtime files
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite*-shm
+*.sqlite*-wal
+
 # IDE configuration
 .idea/
