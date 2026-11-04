@@ -10,10 +10,10 @@ from ..models import User
 from ..schemas import LoginRequest, TokenResponse, UserRequest, UserResponse
 
 
-router = APIRouter()
+router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user: UserRequest, database: Session = Depends(get_database)):
     new_user = User(
         username=user.username,
@@ -39,7 +39,8 @@ def login(
     credentials: LoginRequest,
     database: Session = Depends(get_database),
 ):
-    user = utilities.authenticate_user(database, credentials.email, credentials.password)
+    user = utilities.authenticate_user(
+        database, credentials.email, credentials.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -55,7 +56,7 @@ def login(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.get("/users/me", response_model=UserResponse)
+@router.get("/me", response_model=UserResponse)
 def get_current_user_profile(
     current_user: User = Depends(utilities.get_current_active_user),
 ):
