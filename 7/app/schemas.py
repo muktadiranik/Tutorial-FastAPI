@@ -1,28 +1,4 @@
-
 from pydantic import BaseModel, EmailStr, Field, HttpUrl, field_validator
-
-
-class ModelRequest(BaseModel):
-    name: str
-    description: str
-    provider: str
-    website: HttpUrl
-
-
-class CourseRequest(BaseModel):
-    name: str
-    description: str
-    price: float
-
-
-class CourseResponse(BaseModel):
-    id: int
-    name: str
-    description: str
-    price: float
-
-    class Config:
-        from_attributes = True
 
 
 class UserRequest(BaseModel):
@@ -75,3 +51,52 @@ class User(BaseModel):
 
 class UserInDataBase(User):
     hashed_password: str
+
+
+class ModelRequest(BaseModel):
+    name: str
+    description: str
+    provider: str
+    website: HttpUrl
+
+
+class CourseRequest(BaseModel):
+    name: str
+    description: str
+    price: float
+    instructor_id: int | None = Field(default=None, gt=0)
+
+
+class CourseCreateRequest(CourseRequest):
+    instructor_id: int = Field(gt=0)
+
+
+class CourseResponse(BaseModel):
+    id: int
+    name: str
+    description: str | None
+    price: float | None
+    instructor_id: int | None
+    instructor: UserResponse | None
+
+    class Config:
+        from_attributes = True
+
+
+class CourseResponseBulk(BaseModel):
+    id: int
+    name: str
+    description: str | None
+    price: float | None
+    instructor_id: int | None
+
+    class Config:
+        from_attributes = True
+
+
+class UserWithCoursesResponseBulk(UserResponse):
+    courses: list[CourseResponseBulk] = Field(default_factory=list)
+
+
+class UserWithCoursesResponse(UserResponse):
+    courses: CourseResponse | None

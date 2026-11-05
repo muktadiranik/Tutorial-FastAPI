@@ -69,10 +69,88 @@ third-party error logs are independent and are not sanitized by this formatter.
 | Method | Path | Input | Success |
 | --- | --- | --- | --- |
 | POST | `/users` | JSON: `username`, `email`, `password` | 201: `id`, `username`, `email` |
+| GET | `/users/` | Bearer token; optional `skip`, `limit`, `search` | 200: a page of users with nested `courses` |
+| GET | `/courses/` | Optional `skip`, `limit` | 200: a page of courses with nested `instructor` |
+| GET | `/courses/{course_id}` | Course ID | 200: a course with nested `instructor` |
 | POST | `/login` | JSON: `email`, `password` | 200: `access_token`, `token_type` |
 | GET | `/users/me` | `Authorization: Bearer <access_token>` | 200: `id`, `username`, `email` |
 
-The routes above use `utilities.py`. These additional routes use
+### List users with courses
+
+`GET /users/` requires a valid bearer token and returns a page of users ordered by ID.
+Each user includes `id`, `username`, `email`, and a `courses` array; users without
+courses have an empty array. Password hashes are never included. Courses are
+loaded in batches rather than with a separate database query for every user.
+The optional `search` parameter matches a substring of the username or email
+before pagination. Omitting `search`, or supplying an empty value, leaves the
+results unfiltered; a search with no matches returns `[]`.
+
+```json
+[
+  {
+    "id": 1,
+    "username": "alice",
+    "email": "alice@example.com",
+    "courses": [
+      {"id": 1, "name": "FastAPI", "description": "Tutorial", "price": 10.0, "instructor_id": 1}
+    ]
+  }
+]
+```
+
+The endpoint returns `[]` when there are no users and `401` for missing or invalid
+credentials. A course's `description` and `price` may be `null`, matching the
+database model. Existing registration and current-user response formats are
+unchanged. Any authenticated user can access this tutorial endpoint; add an
+administrator permission check before using it as a private directory in production.
+
+### Pagination
+
+Both `GET /users/` and `GET /courses/` accept these optional query parameters:
+
+| Parameter | Default | Allowed values |
+| --- | --- | --- |
+| `skip` | `0` | Integer greater than or equal to `0` |
+| `limit` | `20` | Integer from `1` to `100` |
+
+```text
+GET /users/?skip=0&limit=20
+GET /users/?skip=20&limit=20
+GET /courses/?skip=0&limit=20
+GET /courses/?skip=20&limit=20
+```
+
+Results are ordered by ascending ID and remain JSON arrays. Requests without
+pagination parameters now return only the first 20 records, not every record.
+Advance `skip` by `limit` to fetch subsequent pages; an offset past the end returns
+`[]`, and the last page may contain fewer than `limit` records. Invalid parameters
+return `422`. User pagination limits users only: each returned user's complete
+`courses` array is still included. Users still require a bearer token; courses
+remain public. No database migration is needed.
+
+### Fetch courses with instructors
+
+Both `GET /courses/` and `GET /courses/{course_id}` include the instructor object:
+
+```json
+{
+  "id": 1,
+  "name": "FastAPI",
+  "description": "Tutorial",
+  "price": 10.0,
+  "instructor_id": 1,
+  "instructor": {"id": 1, "username": "alice", "email": "alice@example.com"}
+}
+```
+
+The list endpoint returns an array of these objects with the existing pagination.
+Instructors are eager-loaded in batches, avoiding a query per course. The nested
+object excludes passwords and the instructor's own course list to avoid recursive
+responses. Course creation/update responses and courses nested under users keep
+their compact format. These course routes remain public, including the returned
+instructor usernames and emails; protect them if that directory should be private.
+
+The user routes above use `utilities.py`. These additional routes use
 `authentication.py` directly:
 
 | Method | Path | Input | Success |
@@ -116,13 +194,35 @@ Open `http://127.0.0.1:8000/docs`, register a user with `POST /users`, then call
 `POST /login` with JSON. Copy the returned `access_token` into **Authorize**
 (without the `Bearer ` prefix) to try `/users/me`. Authorization uses an HTTP
 Bearer security scheme, not the OAuth2 password flow, which requires form data.
-Course endpoints remain public and unchanged. Use HTTPS and add rate limiting
+Course endpoints remain public. Use HTTPS and add rate limiting
 before exposing authentication publicly; refresh tokens and logout/revocation
 are not implemented.
 
 `/users/me` uses `utilities.get_current_active_user`. The SQL user model has no
 `disabled` column, so current database users are treated as active; persistent
 account disabling would require a model change and migration.
+
+### Create a course
+
+`POST /courses/` requires the ID of an existing user as `instructor_id`:
+
+```json
+{
+  "name": "FastAPI",
+  "description": "Tutorial",
+  "price": 10.0,
+  "instructor_id": 1
+}
+```
+
+Replace `1` with the user's actual ID from registration or `GET /users/`.
+Successful creation returns `200` with the course and its `instructor_id`.
+Missing, null, or non-positive IDs return `422`; a nonexistent instructor returns
+`404`. Database constraint conflicts return `409` and roll back the transaction.
+On `PUT /courses/{course_id}`, omit `instructor_id` to keep the current instructor,
+or provide another existing user ID to reassign it. Explicit null is rejected.
+This tutorial's course routes do not enforce instructor ownership; add authorization
+before exposing these write operations in production.
 
 ## Tests
 

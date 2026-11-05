@@ -217,7 +217,15 @@ class ApplicationLoggingTests(unittest.TestCase):
                     self.assertNotIn(secret, output)
 
     def test_course_changes_are_logged(self):
-        course = {"name": "FastAPI", "description": "Tutorial", "price": 10.0}
+        instructor = self.models.User(
+            username="instructor", email="instructor@example.com", password="test-hash"
+        )
+        self.database.add(instructor)
+        self.database.commit()
+        course = {
+            "name": "FastAPI", "description": "Tutorial", "price": 10.0,
+            "instructor_id": instructor.id,
+        }
         with self.assertLogs("7.app", level="DEBUG") as captured:
             created = self.client.post("/courses/", json=course)
             self.assertEqual(created.status_code, 200)

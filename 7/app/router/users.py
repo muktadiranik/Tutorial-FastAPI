@@ -1,18 +1,58 @@
 from datetime import timedelta
 import logging
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from .. import utilities
 from ..database import get_database
 from ..models import User
-from ..schemas import LoginRequest, TokenResponse, UserRequest, UserResponse
+from ..schemas import (
+    LoginRequest,
+    TokenResponse,
+    UserRequest,
+    UserResponse,
+    UserWithCoursesResponseBulk,
+)
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["Users"])
+
+
+@router.get(
+    "/",
+    response_model=list[UserWithCoursesResponseBulk],
+    dependencies=[Depends(utilities.get_current_active_user)],
+)
+def get_users(
+    database: Annotated[Session, Depends(get_database)],
+    skip: Annotated[int, Query(
+        ge=0, description="Number of users to skip")] = 0,
+    limit: Annotated[int, Query(
+        ge=1, le=100, description="Maximum users to return")] = 20,
+    search: Annotated[str | None, Query(
+        description="Search term for user username or email")] = None,
+) -> list[User]:
+    """Return a page of users with their courses, excluding password hashes."""
+    query = (
+        database.query(User)
+        .options(selectinload(User.courses))
+    )
+    if search:
+        query = query.filter(
+            (User.username.contains(search)) | (User.email.contains(search))
+        )
+    users = (
+        query.order_by(User.id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    logger.debug("Users retrieved count=%s", len(users))
+    return users
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -27,7 +67,8 @@ def register_user(user: UserRequest, database: Session = Depends(get_database)):
         database.commit()
     except IntegrityError:
         database.rollback()
-        logger.warning("Registration rejected: username or email already registered")
+        logger.warning(
+            "Registration rejected: username or email already registered")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Username or email already registered",

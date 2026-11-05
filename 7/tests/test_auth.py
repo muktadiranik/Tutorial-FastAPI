@@ -482,8 +482,10 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(self.client.post("/models", json={}).status_code, 422)
 
     def test_course_routes_remain_public(self):
+        instructor = self.register()
         response = self.client.post("/courses", json={
-            "name": "FastAPI", "description": "Tutorial", "price": 10.0
+            "name": "FastAPI", "description": "Tutorial", "price": 10.0,
+            "instructor_id": instructor["id"],
         })
         self.assertEqual(response.status_code, 200, response.text)
         course_id = response.json()["id"]
