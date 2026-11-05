@@ -38,6 +38,32 @@ refuses to start without a key; use a randomly generated key of at least 32 byte
 Both authentication modules load `7/.env` without overriding existing environment
 variables. Existing tables are not migrated by `create_all()`.
 
+## Logging
+
+Application logs are written to the console (stderr) using Python's standard
+`logging` module. Each entry includes a timestamp, severity, and module name.
+Requests include the method, route template, status code, and time to response
+in milliseconds. Authentication outcomes, course changes, and database startup
+are also logged. Database session details are available at `DEBUG` level.
+
+The default level is `INFO`. Set `LOG_LEVEL` in `7/.env` or in PowerShell before
+starting the server:
+
+```powershell
+$env:LOG_LEVEL = "DEBUG"
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --no-access-log
+```
+
+Supported levels: `DEBUG`, `INFO`, `WARNING`, `ERROR`, and `CRITICAL`.
+Invalid levels fall back to `INFO` with a warning. Application logging does not
+change Uvicorn or third-party logging settings; `--no-access-log` avoids duplicate
+access logs and Uvicorn logging raw URLs with query parameters.
+
+Application logs omit request/response bodies, headers, query strings, and actual
+path parameter values. Exceptions retain traceback locations and their type but
+omit their messages, which can contain SQL parameters or credentials. Uvicorn and
+third-party error logs are independent and are not sanitized by this formatter.
+
 ## Endpoints
 
 | Method | Path | Input | Success |

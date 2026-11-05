@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -6,12 +8,14 @@ from ..models import Course
 from ..schemas import CourseRequest, CourseResponse
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
 
 @router.get("/", response_model=list[CourseResponse])
 async def get_courses(database: Session = Depends(get_database)):
     courses = database.query(Course).all()
+    logger.debug("Courses retrieved count=%s", len(courses))
     return courses
 
 
@@ -19,6 +23,7 @@ async def get_courses(database: Session = Depends(get_database)):
 async def get_course(course_id: int, database: Session = Depends(get_database)):
     course = database.query(Course).filter(Course.id == course_id).first()
     if not course:
+        logger.warning("Course not found course_id=%s", course_id)
         raise HTTPException(status_code=404, detail="Course not found")
     return course
 
@@ -33,6 +38,7 @@ async def create_course(course: CourseRequest, database: Session = Depends(get_d
     database.add(new_course)
     database.commit()
     database.refresh(new_course)
+    logger.info("Course created course_id=%s", new_course.id)
     return new_course
 
 
@@ -41,6 +47,7 @@ async def update_course(course_id: int, course: CourseRequest, database: Session
     existing_course = database.query(Course).filter(
         Course.id == course_id).first()
     if not existing_course:
+        logger.warning("Course not found course_id=%s", course_id)
         raise HTTPException(status_code=404, detail="Course not found")
 
     for key, value in course.model_dump().items():
@@ -48,6 +55,7 @@ async def update_course(course_id: int, course: CourseRequest, database: Session
 
     database.commit()
     database.refresh(existing_course)
+    logger.info("Course updated course_id=%s", existing_course.id)
     return existing_course
 
 
@@ -56,8 +64,10 @@ async def delete_course(course_id: int, database: Session = Depends(get_database
     existing_course = database.query(Course).filter(
         Course.id == course_id).first()
     if not existing_course:
+        logger.warning("Course not found course_id=%s", course_id)
         raise HTTPException(status_code=404, detail="Course not found")
 
     database.delete(existing_course)
     database.commit()
+    logger.info("Course deleted course_id=%s", course_id)
     return {"message": "Course deleted successfully"}

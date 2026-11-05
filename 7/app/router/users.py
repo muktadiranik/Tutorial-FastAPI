@@ -1,4 +1,5 @@
 from datetime import timedelta
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.exc import IntegrityError
@@ -10,6 +11,7 @@ from ..models import User
 from ..schemas import LoginRequest, TokenResponse, UserRequest, UserResponse
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
@@ -25,11 +27,13 @@ def register_user(user: UserRequest, database: Session = Depends(get_database)):
         database.commit()
     except IntegrityError:
         database.rollback()
+        logger.warning("Registration rejected: username or email already registered")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Username or email already registered",
         )
     database.refresh(new_user)
+    logger.info("User registered user_id=%s", new_user.id)
     return new_user
 
 
@@ -42,6 +46,7 @@ def login(
     user = utilities.authenticate_user(
         database, credentials.email, credentials.password)
     if not user:
+        logger.warning("Login rejected: invalid credentials")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -53,6 +58,7 @@ def login(
         data={"sub": str(user.id)},
         expires_delta=timedelta(minutes=utilities.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
+    logger.info("Login successful user_id=%s", user.id)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
