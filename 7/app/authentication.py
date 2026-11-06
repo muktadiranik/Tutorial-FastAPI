@@ -21,7 +21,7 @@ if not SECRET_KEY:
         "Set JWT_SECRET_KEY")
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 3600
 bearer_scheme = HTTPBearer(bearerFormat="JWT", auto_error=False)
 
 
