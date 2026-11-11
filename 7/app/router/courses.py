@@ -51,7 +51,7 @@ def get_course(course_id: int, database: DatabaseDep):
     return course
 
 
-@router.post("/", response_model=CourseResponseBulk)
+@router.post("/", response_model=CourseResponse)
 def create_course(course: CourseCreateRequest, database: DatabaseDep):
     if database.get(User, course.instructor_id) is None:
         raise HTTPException(status_code=404, detail="Instructor not found")
