@@ -20,7 +20,7 @@ router = APIRouter(prefix="/courses", tags=["Courses"])
 DatabaseDep = Annotated[Session, Depends(get_database)]
 
 
-@router.get("/", response_model=list[CourseResponse])
+@router.get("/", response_model=list[CourseResponseBulk])
 def get_courses(
     database: DatabaseDep,
     skip: Annotated[int, Query(
@@ -76,7 +76,7 @@ def create_course(course: CourseCreateRequest, database: DatabaseDep):
     return new_course
 
 
-@router.put("/{course_id}", response_model=CourseResponseBulk)
+@router.put("/{course_id}", response_model=CourseResponse)
 def update_course(course_id: int, course: CourseRequest, database: DatabaseDep):
     existing_course = database.query(Course).filter(
         Course.id == course_id).first()
