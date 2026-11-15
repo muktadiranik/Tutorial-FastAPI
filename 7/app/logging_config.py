@@ -45,12 +45,13 @@ def configure_logging() -> None:
     logger.propagate = False
 
     # Repeated configuration must not add duplicate console handlers.
+    handler_name = f"{logger.name}.console"
     handler = next(
-        (item for item in logger.handlers if item.name == "lesson7.console"), None
+        (item for item in logger.handlers if item.name == handler_name), None
     )
     if handler is None:
         handler = logging.StreamHandler()
-        handler.set_name("lesson7.console")
+        handler.set_name(handler_name)
         logger.addHandler(handler)
     handler.setFormatter(SafeExceptionFormatter(
         "%(asctime)s | %(levelname)s | %(name)s | %(message)s"

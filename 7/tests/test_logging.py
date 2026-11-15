@@ -47,6 +47,14 @@ class LoggingConfigurationTests(unittest.TestCase):
         self.assertIn(" | INFO | 7.app | Application ready", output)
         self.assertNotIn("Hidden debug message", output)
 
+    def test_console_handler_name_uses_application_logger_name(self):
+        with patch.dict(os.environ, {"LOG_LEVEL": "INFO"}):
+            logging_config.configure_logging()
+        self.assertEqual(
+            [handler.name for handler in self.logger.handlers],
+            [f"{self.logger.name}.console"],
+        )
+
     def test_level_is_configurable_and_case_insensitive(self):
         with patch.dict(os.environ, {"LOG_LEVEL": " debug "}):
             logging_config.configure_logging()
@@ -64,7 +72,10 @@ class LoggingConfigurationTests(unittest.TestCase):
         root_state = root.handlers[:], root.level
         with patch.dict(os.environ, {"LOG_LEVEL": "INFO"}):
             logging_config.configure_logging()
+            handler = self.logger.handlers[0]
             logging_config.configure_logging()
+        self.assertEqual(len(self.logger.handlers), 1)
+        self.assertIs(self.logger.handlers[0], handler)
         self.logger.info("Only once")
         self.assertEqual(self.stream.getvalue().count("Only once"), 1)
         self.assertEqual((root.handlers, root.level), root_state)
