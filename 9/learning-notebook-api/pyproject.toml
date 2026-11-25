@@ -3,5 +3,16 @@ name = "learning-notebook-api"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "dotenv>=0.9.9",
     "fastapi[standard]>=0.165.0",
+    "langchain>=1.5.2",
+    "langchain-google-genai>=4.5.2",
+    "langchain-groq>=1.2.1",
+    "openai>=3.59.0",
+    "streamlit>=1.67.0",
+]
+
+[tool.uv.workspace]
+members = [
+    "chatbot",
 ]
