@@ -1,0 +1,45 @@
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_core.runnables import RunnableLambda
+from langchain_core.documents import Document
+
+CHROMA_DIRECTORY = "chroma_store"
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+
+
+def build_retriever(
+    k_faq: int = 3,
+    k_tickets: int = 3,
+    k_pdf: int = 3,
+) -> RunnableLambda:
+    embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+
+    faq_store = Chroma(
+        collection_name="faq",
+        embedding_function=embeddings,
+        persist_directory=CHROMA_DIRECTORY,
+    )
+    tickets_store = Chroma(
+        collection_name="tickets",
+        embedding_function=embeddings,
+        persist_directory=CHROMA_DIRECTORY,
+    )
+    pdf_store = Chroma(
+        collection_name="pdf",
+        embedding_function=embeddings,
+        persist_directory=CHROMA_DIRECTORY,
+    )
+
+    faq_retriever = faq_store.as_retriever(search_kwargs={"k": k_faq})
+    tickets_retriever = tickets_store.as_retriever(
+        search_kwargs={"k": k_tickets})
+    pdf_retriever = pdf_store.as_retriever(search_kwargs={"k": k_pdf})
+
+    def retrieve(query: str) -> list[Document]:
+        return (
+            faq_retriever.invoke(query)
+            + tickets_retriever.invoke(query)
+            + pdf_retriever.invoke(query)
+        )
+
+    return RunnableLambda(retrieve)
